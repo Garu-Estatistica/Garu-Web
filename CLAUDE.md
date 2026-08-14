@@ -272,25 +272,28 @@ Wrappers sobre `jstat` com convenção de nomes inspirada no R:
 
 ## Deploy (Docker)
 
-O app roda em uma **máquina virtual (VM)** dentro do servidor da UNIFESP. O fluxo de deploy é:
+O app roda em uma **máquina virtual (VM)** dentro do servidor da UNIFESP. O servidor utiliza o **Docker Compose** para orquestrar o container, automatizando a substituição da versão antiga pela nova.
 
-1. **Build local:** Construir a imagem Docker na máquina de desenvolvimento
-2. **Envio:** Transferir a imagem para o servidor remoto (VM da universidade)
-3. **Atualização:** Parar o container antigo e subir o novo na porta **3838**
+O fluxo de deploy é:
+
+1. **Build local:** Construir a imagem Docker na máquina de desenvolvimento com a tag `garu-novo` (conforme configurado no `docker-compose.yml` do servidor)
+2. **Envio:** Transferir a imagem compactada (`.tar`) para a pasta HOME do servidor via SSH
+3. **Atualização:** Carregar a imagem no servidor e pedir para o Compose atualizar o serviço
 
 O roteamento da URL pública é gerenciado pela infraestrutura da universidade (fora do controle do projeto).
 
 ```bash
-# Build local
-docker build -t garu-estatistica .
+# Na sua máquina local: Build e exportação
+docker build -t garu-novo .
+docker save garu-novo -o garu-novo.tar
+scp garu-novo.tar seu_usuario@ip_do_servidor:~
 
-# Salvar imagem para transferência
-docker save garu-estatistica -o garu-estatistica.tar
-
-# No servidor remoto: carregar e rodar
-docker load -i garu-estatistica.tar
-docker run -d -p 3838:3838 garu-estatistica
+# No servidor remoto: Atualização automática
+docker load -i garu-novo.tar
+docker-compose up -d
 ```
+
+> **Nota:** O comando `docker-compose up -d` automaticamente detecta que a imagem `garu-novo` foi alterada pelo `docker load`, e se encarrega de parar, remover e recriar o container `Garu_vTs1` de forma transparente na porta 3838.
 
 ### Detalhes do Dockerfile
 

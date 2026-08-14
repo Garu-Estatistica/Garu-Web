@@ -141,8 +141,13 @@ export default function GraficoBivariavel({ dataset, numericCols, factorCols, fi
       const entry: Record<string, string | number> = { name: rowLabel };
       ctable.colLabels.forEach((colLabel, ci) => {
         if (freqMode === 'percentual') {
-          entry[colLabel] = ctable.grandTotal > 0
-            ? parseFloat(((ctable.matrix[ri][ci] / ctable.grandTotal) * 100).toFixed(1))
+          // Stacked: divide by row total so each bar sums to 100%
+          // Grouped: divide by grand total
+          const divisor = chartType === 'barras_empilhadas'
+            ? ctable.rowTotals[ri]
+            : ctable.grandTotal;
+          entry[colLabel] = divisor > 0
+            ? parseFloat(((ctable.matrix[ri][ci] / divisor) * 100).toFixed(1))
             : 0;
         } else {
           entry[colLabel] = ctable.matrix[ri][ci];
@@ -150,7 +155,7 @@ export default function GraficoBivariavel({ dataset, numericCols, factorCols, fi
       });
       return entry;
     });
-  }, [ctable, freqMode]);
+  }, [ctable, freqMode, chartType]);
 
   // --- Quant × Quant: Scatter ---
   const scatterData = useMemo(() => {
@@ -489,7 +494,7 @@ export default function GraficoBivariavel({ dataset, numericCols, factorCols, fi
                     <BarChart key={ctable.colLabels.join('-')} data={barData} margin={{ top: 20, right: 30, left: 20, bottom: 40 }}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="name" interval={0} tick={<CustomXAxisTick />} height={110} label={{ value: var1, position: 'insideBottom', offset: -5, style: { fontSize: 13, fill: '#333' } }} />
-                      <YAxis domain={freqMode === 'percentual' ? [0, 100] : ['auto', 'auto']} allowDecimals={false} label={{ value: freqMode === 'percentual' ? 'Percentual (%)' : 'Frequência Absoluta', angle: -90, position: 'insideLeft', offset: -5, dy: 40, style: { fontSize: 13, fill: '#333' } }} />
+                      <YAxis domain={freqMode === 'percentual' ? [0, 100] : ['auto', 'auto']} ticks={freqMode === 'percentual' ? [0, 25, 50, 75, 100] : undefined} allowDecimals={false} label={{ value: freqMode === 'percentual' ? 'Percentual (%)' : 'Frequência Absoluta', angle: -90, position: 'insideLeft', offset: -5, dy: 40, style: { fontSize: 13, fill: '#333' } }} />
                       <Tooltip formatter={(value: any, name: any) => [formatBR(Number(value), 1) + (freqMode === 'percentual' ? '% (do Total)' : ''), name]} />
                       <Legend verticalAlign="top" wrapperStyle={{ paddingBottom: 20 }} />
                       {ctable.colLabels.map((col, idx) => {
@@ -519,8 +524,8 @@ export default function GraficoBivariavel({ dataset, numericCols, factorCols, fi
                     <BarChart key={ctable.colLabels.join('-')} data={barData} margin={{ top: 20, right: 30, left: 20, bottom: 40 }}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="name" interval={0} tick={<CustomXAxisTick />} height={110} label={{ value: var1, position: 'insideBottom', offset: -5, style: { fontSize: 13, fill: '#333' } }} />
-                      <YAxis domain={freqMode === 'percentual' ? [0, 100] : ['auto', 'auto']} allowDecimals={false} label={{ value: freqMode === 'percentual' ? 'Percentual (%)' : 'Frequência Absoluta', angle: -90, position: 'insideLeft', offset: -5, dy: 40, style: { fontSize: 13, fill: '#333' } }} />
-                      <Tooltip formatter={(value: any, name: any) => [formatBR(Number(value), 1) + (freqMode === 'percentual' ? '% (do Total)' : ''), name]} />
+                      <YAxis domain={freqMode === 'percentual' ? [0, 100] : ['auto', 'auto']} ticks={freqMode === 'percentual' ? [0, 25, 50, 75, 100] : undefined} allowDecimals={false} label={{ value: freqMode === 'percentual' ? 'Percentual (%)' : 'Frequência Absoluta', angle: -90, position: 'insideLeft', offset: -5, dy: 40, style: { fontSize: 13, fill: '#333' } }} />
+                      <Tooltip formatter={(value: any, name: any) => [formatBR(Number(value), 1) + (freqMode === 'percentual' ? '%' : ''), name]} />
                       <Legend verticalAlign="top" wrapperStyle={{ paddingBottom: 20 }} />
                       {ctable.colLabels.map((col, idx) => {
                         const originalIdx = customOrderVar2.indexOf(col);

@@ -47,8 +47,11 @@ export default function GraficosBidimensionais() {
   const stackedData = useMemo(() => {
     return ctable.rowLabels.map((rowLabel, ri) => {
       const entry: Record<string, string | number> = { name: rowLabel };
+      const rowTotal = ctable.rowTotals[ri];
       ctable.colLabels.forEach((colLabel, ci) => {
-        entry[colLabel] = ctable.matrix[ri][ci];
+        entry[colLabel] = rowTotal > 0
+          ? Number(((ctable.matrix[ri][ci] / rowTotal) * 100).toFixed(1))
+          : 0;
       });
       return entry;
     });
@@ -192,13 +195,13 @@ export default function GraficosBidimensionais() {
 
             <Grid.Col span={7}>
               <Paper shadow="xs" p="md" withBorder>
-                <Title order={5} mb="sm">Grafico de Barras Empilhadas</Title>
+                <Title order={5} mb="sm">Gráfico de Barras Empilhadas (%)</Title>
                 <ResponsiveContainer width="100%" height={420}>
                   <BarChart data={stackedData} margin={{ top: 20, right: 20, left: 10, bottom: 20 }}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="name" angle={-35} textAnchor="end" interval={0} tick={{ fontSize: 11, dy: 10 }} tickMargin={5} height={110} label={{ value: qual1, position: 'insideBottom', offset: -10, style: { fontSize: 14, fill: '#333' } }} />
-                    <YAxis allowDecimals={false} label={{ value: 'Frequência Absoluta', angle: -90, position: 'insideLeft', offset: -5, style: { fontSize: 14, fill: '#333' } }} />
-                    <Tooltip />
+                    <YAxis domain={[0, 100]} tickFormatter={(v: number) => `${v}%`} label={{ value: 'Frequência Relativa (%)', angle: -90, position: 'insideLeft', offset: -5, style: { fontSize: 14, fill: '#333' } }} />
+                    <Tooltip formatter={(value: number | string | undefined) => `${value ?? ''}%`} />
                     <Legend />
                     {ctable.colLabels.map((col, ci) => (
                       <Bar key={col} dataKey={col} stackId="a" fill={COLORFUL[ci % COLORFUL.length]} />
