@@ -9,12 +9,16 @@ interface CustomLabState {
   numericColumns: string[];
   factorColumns: string[];
   allColumns: string[];
+  idColumn: string | null;
+  hasIdColumn: boolean;
   setCustomDataset: (
     data: CustomDatasetRecord[],
     name: string,
     numeric: string[],
     factor: string[],
-    allCols: string[]
+    allCols: string[],
+    idColumn?: string | null,
+    hasIdColumn?: boolean,
   ) => void;
   clearCustomDataset: () => void;
 }
@@ -27,13 +31,17 @@ export const useCustomLabStore = create<CustomLabState>()(
       numericColumns: [],
       factorColumns: [],
       allColumns: [],
-      setCustomDataset: (data, name, numeric, factor, allCols) =>
+      idColumn: null,
+      hasIdColumn: false,
+      setCustomDataset: (data, name, numeric, factor, allCols, idColumn = null, hasIdColumn = false) =>
         set({
           customDataset: data,
           fileName: name,
           numericColumns: numeric,
           factorColumns: factor,
           allColumns: allCols,
+          idColumn,
+          hasIdColumn,
         }),
       clearCustomDataset: () =>
         set({
@@ -42,6 +50,8 @@ export const useCustomLabStore = create<CustomLabState>()(
           numericColumns: [],
           factorColumns: [],
           allColumns: [],
+          idColumn: null,
+          hasIdColumn: false,
         }),
     }),
     {
