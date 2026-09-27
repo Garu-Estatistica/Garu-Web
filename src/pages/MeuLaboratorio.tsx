@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Text, Title, Paper, Alert, FileInput, Button, Group, Badge, Tabs, Loader, SegmentedControl } from '@mantine/core';
+import { Link } from 'react-router-dom';
 import PageWrapper from '../components/PageWrapper';
 import { IconAlertCircle, IconUpload, IconFileCheck, IconClearAll } from '@tabler/icons-react';
 import { useCustomLabStore } from '../stores/useCustomLabStore';
@@ -51,9 +52,24 @@ export default function MeuLaboratorio() {
 
       {!customDataset ? (
         <Paper shadow="sm" p="xl" withBorder>
-          <Alert icon={<IconAlertCircle size={16} />} title="Instruções para o Arquivo" color="blue" mb="lg">
-            A primeira linha do seu arquivo <strong>.csv</strong> deve obrigatoriamente conter os nomes das variáveis (o cabeçalho). Evite acentos complexos ou espaços gigantes nos nomes das colunas. As células sem resposta devem estar totalmente em branco ou marcadas como 'NA'. Certifique-se de que casas decimais estejam coerentes (preferencialmente ponto). Sua primeira coluna deve ser a coluna IDs, ou deixe-a vazia caso não tenha IDs. Os conteudos das variaveis categorigas devem ser escritas com texto e não números para evitar que sejam classificados como variáveis numéricas 
+          <Alert icon={<IconAlertCircle size={16} />} title="Instruções para formatação da base de dados" color="blue" mb="lg">
+            <Text component="div" size="sm">
+              Antes de enviar seu arquivo <strong>.csv</strong>, verifique:
+              <ul style={{ marginTop: 8, marginBottom: 0, paddingLeft: 20 }}>
+                <li>A primeira linha deve conter os nomes das variáveis.</li>
+                <li>Nos nomes das colunas, não use espaços, acentos ou caracteres especiais.</li>
+                <li>Dados ausentes devem ser deixados em branco ou identificados como NA.</li>
+                <li>Para números decimais, use ponto como separador (ex.: 1.75).</li>
+                <li>Se o banco possuir um identificador (ID) para cada registro, coloque-o na primeira coluna. Caso não possua, deixe essa coluna vazia.</li>
+              </ul>
+            </Text>
           </Alert>
+
+          <Group justify="flex-start" mt="md">
+            <Button component={Link} to="/conjuntos-de-dados" variant="light" color="blue">
+              Acessar conjuntos de dados
+            </Button>
+          </Group>
 
           <FileInput
             label="Carregar Base de Dados (.csv)"
