@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Text, Title, Paper, Alert, FileInput, Button, Group, Badge, Tabs, Loader, SegmentedControl, Stack, Radio, Table } from '@mantine/core';
+import { Text, Title, Paper, Alert, FileInput, Button, Group, Badge, Tabs, Loader, SegmentedControl, Stack, Radio, Table, Select } from '@mantine/core';
 import { Link } from 'react-router-dom';
 import PageWrapper from '../components/PageWrapper';
 import { IconAlertCircle, IconUpload, IconFileCheck, IconClearAll } from '@tabler/icons-react';
@@ -141,12 +141,16 @@ export default function MeuLaboratorio() {
         </Radio.Group>
 
         {reviewHasIdColumn && reviewDataset && reviewDataset.allColumns.length > 0 && (
-          <div>
-            <Text size="sm" fw={600} mb="xs">Selecione a coluna de ID</Text>
-            <SegmentedControl
+          <div style={{ maxWidth: 420, width: '100%' }}>
+            <Select
+              label="Selecione a coluna de ID"
+              placeholder="Escolha a coluna"
+              searchable
+              clearable={false}
               value={reviewIdColumn ?? reviewDataset.allColumns[0]}
-              onChange={setReviewIdColumn}
+              onChange={(value) => setReviewIdColumn(value ?? null)}
               data={reviewDataset.allColumns.map((column) => ({ label: column, value: column }))}
+              maxDropdownHeight={220}
             />
           </div>
         )}
