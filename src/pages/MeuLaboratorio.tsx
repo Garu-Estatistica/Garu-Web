@@ -1,8 +1,8 @@
 import { useState, useMemo } from 'react';
-import { Text, Title, Paper, Alert, FileInput, Button, Group, Badge, Tabs, Loader, SegmentedControl, Stack, Radio, Table, Select } from '@mantine/core';
+import { Text, Title, Paper, Alert, FileInput, Button, Group, Badge, Tabs, Loader, SegmentedControl, Stack, Radio, Table, Select, SimpleGrid, Card } from '@mantine/core';
 import { Link } from 'react-router-dom';
 import PageWrapper from '../components/PageWrapper';
-import { IconAlertCircle, IconUpload, IconFileCheck, IconClearAll } from '@tabler/icons-react';
+import { IconAlertCircle, IconUpload, IconFileCheck, IconClearAll, IconDatabase, IconChartBar, IconChartHistogram, IconCalculator, IconList, IconChartDots, IconFilter, IconArrowsLeftRight, IconChartScatter, IconChecklist } from '@tabler/icons-react';
 import { useCustomLabStore } from '../stores/useCustomLabStore';
 import { applyColumnTypeOverrides, parseCustomCSV, type ColumnType } from '../utils/csvParser';
 import GenericQuiQuadrado from '../components/calculators/GenericQuiQuadrado';
@@ -43,6 +43,30 @@ export default function MeuLaboratorio() {
   const [descritivaTab, setDescritivaTab] = useState('resumo');
   const [graficosTab, setGraficosTab] = useState('univariavel');
   const [inferenciaTab, setInferenciaTab] = useState('qui');
+  const [activeLabView, setActiveLabView] = useState<'dados' | 'descritiva' | 'graficos' | 'inferencia'>('dados');
+
+  const handleLabNavigation = (section: 'dados' | 'descritiva' | 'graficos' | 'inferencia', subSection?: string) => {
+    if (!customDataset && !reviewDataset) {
+      return;
+    }
+
+    setActiveLabView(section);
+
+    if (section === 'descritiva') {
+      setDescritivaTab(subSection === 'frequencia' ? 'frequencia' : 'resumo');
+    }
+
+    if (section === 'graficos') {
+      setGraficosTab(subSection === 'bivariavel' ? 'bivariavel' : 'univariavel');
+    }
+
+    if (section === 'inferencia') {
+      if (subSection === 'associacao') setInferenciaTab('qui');
+      else if (subSection === 'correlacao') setInferenciaTab('correlacao');
+      else if (subSection === 'comparacao') setInferenciaTab('testet');
+      else setInferenciaTab('qui');
+    }
+  };
 
   const handleFileUpload = async (file: File | null) => {
     if (!file) return;
@@ -110,6 +134,144 @@ export default function MeuLaboratorio() {
     setReviewIdColumn(null);
     setReviewHasIdColumn(true);
     setError(null);
+  };
+
+  const renderLabHierarchy = () => {
+    const isDataReady = Boolean(customDataset || reviewDataset);
+
+    const mainSections = [
+      {
+        title: 'Carregamento da base de dados',
+        description: 'Upload, revisão e preparação da base',
+        icon: <IconDatabase size={20} />, 
+        value: 'dados' as const,
+        disabled: false,
+        highlights: ['Upload', 'Revisão', 'Coluna de ID'],
+      },
+      {
+        title: 'Estatística Descritiva',
+        description: 'Frequências, resumo e gráficos',
+        icon: <IconChartBar size={20} />,
+        value: 'descritiva' as const,
+        disabled: !isDataReady,
+        highlights: ['Distribuição de frequências', 'Medidas-resumo', 'Gráficos'],
+      },
+      {
+        title: 'Inferência',
+        description: 'Testes e diagnósticos',
+        icon: <IconFilter size={20} />,
+        value: 'inferencia' as const,
+        disabled: !isDataReady,
+        highlights: ['Comparação entre grupos', 'Associação', 'Correlação'],
+      },
+    ];
+
+    const descriptiveItems = [
+      { label: 'Distribuição de frequências', icon: <IconList size={16} />, section: 'descritiva' as const, subSection: 'frequencia', disabled: !isDataReady },
+      { label: 'Medidas-resumo', icon: <IconCalculator size={16} />, section: 'descritiva' as const, subSection: 'resumo', disabled: !isDataReady },
+      { label: 'Gráficos', icon: <IconChartHistogram size={16} />, section: 'graficos' as const, subSection: 'univariavel', disabled: !isDataReady },
+    ];
+
+    const inferenceItems = [
+      { label: 'Comparação entre grupos', icon: <IconArrowsLeftRight size={16} />, section: 'inferencia' as const, subSection: 'comparacao', disabled: !isDataReady },
+      { label: 'Associação', icon: <IconChartDots size={16} />, section: 'inferencia' as const, subSection: 'associacao', disabled: !isDataReady },
+      { label: 'Correlação', icon: <IconChartScatter size={16} />, section: 'inferencia' as const, subSection: 'correlacao', disabled: !isDataReady },
+      { label: 'Pressupostos e diagnósticos', icon: <IconChecklist size={16} />, section: 'inferencia' as const, subSection: 'diagnosticos', disabled: !isDataReady },
+    ];
+
+    return (
+      <Paper shadow="sm" p="lg" withBorder mb="lg">
+        <Title order={4} mb="xs">Hierarquia do Meu Laboratório</Title>
+        <Text size="sm" c="dimmed" mb="lg">
+          Acesse rapidamente cada área do laboratório e mantenha o fluxo de análise organizado.
+        </Text>
+
+        <SimpleGrid cols={{ base: 1, md: 3 }} spacing="md">
+          {mainSections.map((section) => (
+            <Card
+              key={section.title}
+              withBorder
+              radius="md"
+              p="md"
+              style={{
+                borderColor: activeLabView === section.value ? 'var(--mantine-color-cyan-5)' : undefined,
+                background: activeLabView === section.value ? 'var(--mantine-color-cyan-0)' : undefined,
+                opacity: section.disabled ? 0.7 : 1,
+              }}
+            >
+              <Group gap="sm" align="flex-start" mb="xs">
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 8, background: 'var(--mantine-color-cyan-1)' }}>
+                  {section.icon}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <Text fw={700}>{section.title}</Text>
+                  <Text size="xs" c="dimmed">{section.description}</Text>
+                </div>
+              </Group>
+
+              <Stack gap={6} mb="sm">
+                {section.highlights.map((item) => (
+                  <Text key={item} size="xs" c="dimmed">• {item}</Text>
+                ))}
+              </Stack>
+
+              <Button
+                fullWidth
+                variant={activeLabView === section.value ? 'filled' : 'light'}
+                color="cyan"
+                disabled={section.disabled}
+                onClick={() => handleLabNavigation(section.value)}
+              >
+                {section.value === 'dados' ? 'Carregar ou revisar base' : 'Abrir área'}
+              </Button>
+            </Card>
+          ))}
+        </SimpleGrid>
+
+        <SimpleGrid cols={{ base: 1, md: 2 }} spacing="sm" mt="lg">
+          <Paper withBorder p="sm" radius="md">
+            <Text fw={600} mb="xs">Estatística Descritiva</Text>
+            <Stack gap="xs">
+              {descriptiveItems.map((item) => (
+                <Button
+                  key={item.label}
+                  variant={activeLabView === item.section && (item.subSection === 'frequencia' ? descritivaTab === 'frequencia' : item.subSection === 'resumo' ? descritivaTab === 'resumo' : true) ? 'filled' : 'default'}
+                  leftSection={item.icon}
+                  justify="left"
+                  disabled={item.disabled}
+                  onClick={() => handleLabNavigation(item.section, item.subSection)}
+                >
+                  {item.label}
+                </Button>
+              ))}
+            </Stack>
+          </Paper>
+
+          <Paper withBorder p="sm" radius="md">
+            <Text fw={600} mb="xs">Inferência</Text>
+            <Stack gap="xs">
+              {inferenceItems.map((item) => (
+                <Button
+                  key={item.label}
+                  variant={activeLabView === item.section && (() => {
+                    if (item.subSection === 'comparacao') return inferenciaTab === 'testet';
+                    if (item.subSection === 'associacao') return inferenciaTab === 'qui';
+                    if (item.subSection === 'correlacao') return inferenciaTab === 'correlacao';
+                    return false;
+                  })() ? 'filled' : 'default'}
+                  leftSection={item.icon}
+                  justify="left"
+                  disabled={item.disabled}
+                  onClick={() => handleLabNavigation(item.section, item.subSection)}
+                >
+                  {item.label}
+                </Button>
+              ))}
+            </Stack>
+          </Paper>
+        </SimpleGrid>
+      </Paper>
+    );
   };
 
   const renderReviewStep = () => (
@@ -201,50 +363,54 @@ export default function MeuLaboratorio() {
   return (
     <PageWrapper size="xl">
       {!customDataset && !reviewDataset ? (
-        <Paper shadow="sm" p="xl" withBorder>
-          <Alert icon={<IconAlertCircle size={16} />} title="Instruções para formatação da base de dados" color="blue" mb="lg">
-            <Text component="div" size="sm">
-              Antes de enviar seu arquivo <strong>.csv</strong>, verifique:
-              <ul style={{ marginTop: 8, marginBottom: 0, paddingLeft: 20 }}>
-                <li>A primeira linha deve conter os nomes das variáveis.</li>
-                <li>Nos nomes das colunas, não use espaços, acentos ou caracteres especiais.</li>
-                <li>Dados ausentes devem ser deixados em branco ou identificados como NA.</li>
-                <li>Para números decimais, use ponto como separador (ex.: 1.75).</li>
-                <li>Se o banco possuir um identificador (ID) para cada registro, coloque-o na primeira coluna. Caso não possua, deixe essa coluna vazia.</li>
-              </ul>
-            </Text>
-          </Alert>
+        <>
+          {renderLabHierarchy()}
 
-          <Group justify="flex-start" mt="md">
-            <Button component={Link} to="/conjuntos-de-dados" variant="light" color="blue">
-              Acessar conjuntos de dados
-            </Button>
-          </Group>
-
-          <FileInput
-            label="Carregar Base de Dados (.csv)"
-            placeholder="Clique ou arraste seu arquivo .csv aqui"
-            accept="text/csv"
-            leftSection={<IconUpload size={14} />}
-            onChange={handleFileUpload}
-            disabled={loading}
-            mt="md"
-            size="md"
-          />
-
-          {loading && (
-            <Group mt="md">
-              <Loader size="sm" />
-              <Text size="sm">Processando e interpretando dados...</Text>
-            </Group>
-          )}
-
-          {error && (
-            <Alert icon={<IconAlertCircle size={16} />} title="Erro" color="red" mt="md">
-              {error}
+          <Paper shadow="sm" p="xl" withBorder>
+            <Alert icon={<IconAlertCircle size={16} />} title="Instruções para formatação da base de dados" color="blue" mb="lg">
+              <Text component="div" size="sm">
+                Antes de enviar seu arquivo <strong>.csv</strong>, verifique:
+                <ul style={{ marginTop: 8, marginBottom: 0, paddingLeft: 20 }}>
+                  <li>A primeira linha deve conter os nomes das variáveis.</li>
+                  <li>Nos nomes das colunas, não use espaços, acentos ou caracteres especiais.</li>
+                  <li>Dados ausentes devem ser deixados em branco ou identificados como NA.</li>
+                  <li>Para números decimais, use ponto como separador (ex.: 1.75).</li>
+                  <li>Se o banco possuir um identificador (ID) para cada registro, coloque-o na primeira coluna. Caso não possua, deixe essa coluna vazia.</li>
+                </ul>
+              </Text>
             </Alert>
-          )}
-        </Paper>
+
+            <Group justify="flex-start" mt="md">
+              <Button component={Link} to="/conjuntos-de-dados" variant="light" color="blue">
+                Acessar conjuntos de dados
+              </Button>
+            </Group>
+
+            <FileInput
+              label="Carregar Base de Dados (.csv)"
+              placeholder="Clique ou arraste seu arquivo .csv aqui"
+              accept="text/csv"
+              leftSection={<IconUpload size={14} />}
+              onChange={handleFileUpload}
+              disabled={loading}
+              mt="md"
+              size="md"
+            />
+
+            {loading && (
+              <Group mt="md">
+                <Loader size="sm" />
+                <Text size="sm">Processando e interpretando dados...</Text>
+              </Group>
+            )}
+
+            {error && (
+              <Alert icon={<IconAlertCircle size={16} />} title="Erro" color="red" mt="md">
+                {error}
+              </Alert>
+            )}
+          </Paper>
+        </>
       ) : customDataset ? (
         <>
           <Paper shadow="sm" p="md" withBorder mb="lg">
@@ -274,11 +440,13 @@ export default function MeuLaboratorio() {
             </Group>
           </Paper>
 
+          {renderLabHierarchy()}
+
           <Paper shadow="sm" p="md" withBorder>
-            <Tabs defaultValue="dados">
+            <Tabs value={activeLabView} onChange={(value) => setActiveLabView(value as 'dados' | 'descritiva' | 'graficos' | 'inferencia')}>
               <Tabs.List grow mb="md">
                 <Tabs.Tab value="dados">Visualizar Dados</Tabs.Tab>
-                <Tabs.Tab value="descritiva">Medidas Resumo</Tabs.Tab>
+                <Tabs.Tab value="descritiva">Estatística Descritiva</Tabs.Tab>
                 <Tabs.Tab value="graficos">Gráficos</Tabs.Tab>
                 <Tabs.Tab value="inferencia">Inferência</Tabs.Tab>
               </Tabs.List>
