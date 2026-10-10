@@ -196,41 +196,57 @@ export default function MeuLaboratorio() {
               style={{
                 borderColor: activeLabView === section.value ? 'var(--mantine-color-cyan-5)' : undefined,
                 background: activeLabView === section.value ? 'var(--mantine-color-cyan-0)' : undefined,
-                opacity: section.disabled ? 0.7 : 1,
+                opacity: section.disabled ? 0.82 : 1,
+                minWidth: 0,
               }}
             >
               <Group gap="sm" align="flex-start" mb="xs">
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 8, background: 'var(--mantine-color-cyan-1)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 8, background: section.disabled ? 'var(--mantine-color-gray-2)' : 'var(--mantine-color-cyan-1)' }}>
                   {section.icon}
                 </div>
-                <div style={{ flex: 1 }}>
-                  <Text fw={700}>{section.title}</Text>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <Text fw={700} lineClamp={2}>{section.title}</Text>
                   <Text size="xs" c="dimmed">{section.description}</Text>
                 </div>
               </Group>
 
               <Stack gap={6} mb="sm">
                 {section.highlights.map((item) => (
-                  <Text key={item} size="xs" c="dimmed">• {item}</Text>
+                  <Text key={item} size="xs" c="dimmed" style={{ overflowWrap: 'anywhere' }}>• {item}</Text>
                 ))}
               </Stack>
 
-              <Button
-                fullWidth
-                variant={activeLabView === section.value ? 'filled' : 'light'}
-                color="cyan"
-                disabled={section.disabled}
-                onClick={() => handleLabNavigation(section.value)}
-              >
-                {section.value === 'dados' ? 'Carregar ou revisar base' : 'Abrir área'}
-              </Button>
+              {section.disabled ? (
+                <Stack gap={6}>
+                  <Badge variant="light" color="gray" radius="sm" style={{ width: 'fit-content' }}>
+                    Disponível após carregamento
+                  </Badge>
+                  <Text size="xs" c="dimmed" ta="center">
+                    Carregue uma base para acessar esta área.
+                  </Text>
+                </Stack>
+              ) : (
+                <Button
+                  fullWidth
+                  variant={activeLabView === section.value ? 'filled' : 'light'}
+                  color="cyan"
+                  onClick={() => handleLabNavigation(section.value)}
+                >
+                  {section.value === 'dados' ? 'Carregar ou revisar base' : 'Abrir área'}
+                </Button>
+              )}
             </Card>
           ))}
         </SimpleGrid>
 
         <SimpleGrid cols={{ base: 1, md: 2 }} spacing="sm" mt="lg">
-          <Paper withBorder p="sm" radius="md">
+          <Paper withBorder p="sm" radius="md" style={{ minWidth: 0 }}>
             <Text fw={600} mb="xs">Estatística Descritiva</Text>
+            <Text size="xs" c="dimmed" mb="xs">
+              {isDataReady
+                ? 'Recursos disponíveis: distribuição de frequências, medidas-resumo e gráficos.'
+                : 'Recursos liberados após o carregamento da base: distribuição de frequências, medidas-resumo e gráficos.'}
+            </Text>
             <Stack gap="xs">
               {descriptiveItems.map((item) => (
                 <Button
@@ -240,6 +256,7 @@ export default function MeuLaboratorio() {
                   justify="left"
                   disabled={item.disabled}
                   onClick={() => handleLabNavigation(item.section, item.subSection)}
+                  style={{ minWidth: 0, whiteSpace: 'normal', height: 'auto', padding: '0.75rem 0.875rem' }}
                 >
                   {item.label}
                 </Button>
@@ -247,8 +264,13 @@ export default function MeuLaboratorio() {
             </Stack>
           </Paper>
 
-          <Paper withBorder p="sm" radius="md">
+          <Paper withBorder p="sm" radius="md" style={{ minWidth: 0 }}>
             <Text fw={600} mb="xs">Inferência</Text>
+            <Text size="xs" c="dimmed" mb="xs">
+              {isDataReady
+                ? 'Recursos disponíveis: comparação entre grupos, associação e correlação.'
+                : 'Recursos liberados após o carregamento da base: comparação entre grupos, associação e correlação.'}
+            </Text>
             <Stack gap="xs">
               {inferenceItems.map((item) => (
                 <Button
@@ -263,6 +285,7 @@ export default function MeuLaboratorio() {
                   justify="left"
                   disabled={item.disabled}
                   onClick={() => handleLabNavigation(item.section, item.subSection)}
+                  style={{ minWidth: 0, whiteSpace: 'normal', height: 'auto', padding: '0.75rem 0.875rem' }}
                 >
                   {item.label}
                 </Button>
