@@ -1,95 +1,189 @@
 import Papa from 'papaparse';
 import type { CustomDatasetRecord } from '../stores/useCustomLabStore';
 
-interface ParsedResult {
+export type ColumnType = 'numeric' | 'categorical';
+
+export interface ParsedResult {
   data: CustomDatasetRecord[];
   numericColumns: string[];
   factorColumns: string[];
   allColumns: string[];
+  columnTypes: Record<string, ColumnType>;
 }
 
-export function parseCustomCSV(file: File): Promise<ParsedResult> {
-  return new Promise((resolve, reject) => {
-    Papa.parse<Record<string, string>>(file, {
-      header: true,
-      skipEmptyLines: true,
-      complete: (results) => {
-        try {
-          const rawData = results.data;
-          
-          if (!rawData || rawData.length === 0) {
-            reject(new Error("O arquivo está vazio ou formatado incorretamente."));
-            return;
-          }
+const isMissingValue = (value: string | null | undefined): boolean => {
+  if (value === null || value === undefined) return true;
+  const normalized = value.trim();
+  return normalized === '' || ['NA', 'N/A', 'NULL', 'NaN'].includes(normalized.toUpperCase());
+};
 
-          const columns = Object.keys(rawData[0]);
-          const numericColumns: string[] = [];
-          const factorColumns: string[] = [];
+const parseNumericLiteral = (value: string, columnName: string): number => {
+  const normalized = value.trim();
 
-          // Helper clean string (NA -> null)
-          const cleanValue = (val: string | null | undefined): string | null => {
-            if (val === null || val === undefined) return null;
-            const t = val.trim();
-            if (t === "" || t.toUpperCase() === "NA" || t.toUpperCase() === "N/A" || t.toLowerCase() === "null") {
-              return null;
-            }
-            return t;
-          };
+  if (normalized === '' || normalized.toUpperCase() === 'NA') {
+    throw new Error(`A coluna "${columnName}" contém valores ausentes incompatíveis para análise numérica.`);
+  }
 
-          // Step 1: Infer column types
-          columns.forEach((col) => {
-            let isNumeric = true;
-            let hasValidData = false;
+  if (normalized.includes(',')) {
+    throw new Error(`A coluna "${columnName}" usa separador decimal com vírgula. Use ponto como separador decimal (ex.: 1.75).`);
+  }
 
-            for (const row of rawData) {
-              const val = cleanValue(row[col]);
-              if (val !== null) {
-                hasValidData = true;
-                // Replace comma with dot for number checking
-                const numVal = Number(val.replace(',', '.'));
-                if (isNaN(numVal)) {
-                  isNumeric = false;
-                  break; // found one non-numeric, it's a factor
-                }
-              }
-            }
+  const parsed = Number(normalized);
+  if (!Number.isFinite(parsed)) {
+    throw new Error(`A coluna "${columnName}" contém valores incompatíveis para o tipo numérico.`);
+  }
 
-            if (hasValidData && isNumeric) {
-              numericColumns.push(col);
-            } else {
-              factorColumns.push(col);
-            }
-          });
+  return parsed;
+};
 
-          // Step 2: Transform data
-          const transformedData: CustomDatasetRecord[] = rawData.map((row) => {
-            const newRow: CustomDatasetRecord = {};
-            columns.forEach((col) => {
-              const rawStr = cleanValue(row[col]);
-              if (rawStr === null) {
-                newRow[col] = null;
-              } else if (numericColumns.includes(col)) {
-                newRow[col] = Number(rawStr.replace(',', '.'));
-              } else {
-                newRow[col] = rawStr;
-              }
-            });
-            return newRow;
-          });
+export function applyColumnTypeOverrides(
+  allColumns: string[],
+  numericColumns: string[],
+  overrides: Record<string, ColumnType> = {},
+  idColumn: string | null = null,
+) {
+  const numericSet = new Set(numericColumns);
 
-          resolve({
-            data: transformedData,
-            numericColumns,
-            factorColumns,
-            allColumns: columns,
-          });
-        } catch (err) {
-          reject(new Error("Erro ao processar os dados do arquivo."));
-        }
-      },
-      error: (err) => {
-        reject(err);
+  const finalNumeric = new Set<string>();
+  const finalFactor = new Set<string>();
+
+  allColumns.forEach((column) => {
+    if (idColumn && column === idColumn) {
+      return;
+    }
+
+    const resolvedType = overrides[column] ?? (numericSet.has(column) ? 'numeric' : 'categorical');
+    if (resolvedType === 'numeric') {
+      finalNumeric.add(column);
+    } else {
+      finalFactor.add(column);
+    }
+  });
+
+  const analysisNumericColumns = [...finalNumeric];
+  const analysisFactorColumns = [...finalFactor];
+
+  if (!idColumn) {
+    // keep current arrays if user selected no ID column
+    return {
+      numericColumns: [...finalNumeric],
+      factorColumns: [...finalFactor],
+      analysisNumericColumns,
+      analysisFactorColumns,
+      idColumn: null,
+    };
+  }
+
+  return {
+    numericColumns: [...finalNumeric],
+    factorColumns: [...finalFactor],
+    analysisNumericColumns,
+    analysisFactorColumns,
+    idColumn,
+  };
+}
+
+export function buildReviewedDataset(
+  rawRows: Array<Record<string, string | null | undefined>>,
+  columns: string[],
+  columnTypes: Record<string, ColumnType>,
+): CustomDatasetRecord[] {
+  return rawRows.map((row) => {
+    const normalizedRow: CustomDatasetRecord = {};
+
+    columns.forEach((column) => {
+      const rawValue = row[column];
+
+      if (isMissingValue(rawValue)) {
+        normalizedRow[column] = null;
+        return;
+      }
+
+      const value = String(rawValue).trim();
+      if (columnTypes[column] === 'numeric') {
+        normalizedRow[column] = parseNumericLiteral(value, column);
+      } else {
+        normalizedRow[column] = value;
       }
     });
+
+    return normalizedRow;
   });
+}
+
+export function parseCsvText(csvText: string): ParsedResult {
+  const parsed = Papa.parse<Record<string, string | null | undefined>>(csvText, {
+    header: true,
+    skipEmptyLines: true,
+    transform: (value) => value,
+  });
+
+  if (parsed.errors.length > 0) {
+    const firstError = parsed.errors[0];
+    if (firstError.code === 'TooFewFields' || firstError.code === 'TooManyFields') {
+      throw new Error('O arquivo CSV parece estar com colunas inconsistentes. Verifique se os valores decimais usam ponto e se o cabeçalho está correto.');
+    }
+  }
+
+  const rawData = parsed.data as Array<Record<string, string | null | undefined>>;
+
+  if (!rawData || rawData.length === 0) {
+    throw new Error('O arquivo está vazio ou sem dados válidos para importar.');
+  }
+
+  const fields = parsed.meta.fields?.filter((field) => field && field.trim() !== '');
+  if (!fields || fields.length === 0) {
+    throw new Error('CSV sem cabeçalho. Adicione a primeira linha com os nomes das variáveis.');
+  }
+
+  const rowsWithExtraFields = rawData.some((row) => Object.prototype.hasOwnProperty.call(row, '__parsed_extra'));
+  if (rowsWithExtraFields) {
+    throw new Error('O arquivo contém colunas inconsistentes. Verifique o uso do ponto como separador decimal e a quantidade de colunas em cada linha.');
+  }
+
+  const columnTypes: Record<string, ColumnType> = {};
+  const numericColumns: string[] = [];
+  const factorColumns: string[] = [];
+
+  fields.forEach((column) => {
+    let hasValidValue = false;
+    let isNumeric = true;
+
+    for (const row of rawData) {
+      const rawValue = row[column];
+      if (isMissingValue(rawValue)) {
+        continue;
+      }
+
+      hasValidValue = true;
+      try {
+        parseNumericLiteral(String(rawValue), column);
+      } catch {
+        isNumeric = false;
+        break;
+      }
+    }
+
+    columnTypes[column] = hasValidValue && isNumeric ? 'numeric' : 'categorical';
+    if (columnTypes[column] === 'numeric') {
+      numericColumns.push(column);
+    } else {
+      factorColumns.push(column);
+    }
+  });
+
+  const data = buildReviewedDataset(rawData, fields, columnTypes);
+
+  return {
+    data,
+    numericColumns,
+    factorColumns,
+    allColumns: fields,
+    columnTypes,
+  };
+}
+
+export async function parseCustomCSV(file: File): Promise<ParsedResult> {
+  const csvText = await file.text();
+  return parseCsvText(csvText);
 }
